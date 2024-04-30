@@ -1,1 +1,1 @@
-# Hamoye-Internship-DS-Stage-A and B.
+# Data Science-Stage-A and B.
