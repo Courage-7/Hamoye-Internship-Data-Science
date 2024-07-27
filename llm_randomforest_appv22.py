@@ -26,7 +26,7 @@ def load_data(uploaded_file):
 def preprocess_data(df):
     region_encoder = LabelEncoder()
     event_encoder = LabelEncoder()
-    df['region_encoded'] = region_encoder.fit_transform(df['Region'])
+    df['region_encoded'] = region_encoder.fit_transform(df['region'])
     df['event_encoded'] = event_encoder.fit_transform(df['event_type'])
     df['log_fatalities'] = np.log1p(df['fatalities'])
     df['region_event_interaction'] = df['region_encoded'] * df['event_encoded']
