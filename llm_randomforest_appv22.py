@@ -102,16 +102,20 @@ if uploaded_file is not None:
 
     if rf_model:
         # Evaluate model
-    class_labels = [
-            "Africa", 
-            "Asia", 
-            "Middle East", 
-            "Latin America", 
-            "Europe", 
-            "USA/Canada"
-        ]
-        st.subheader('Model Evaluation')
-        st.text(classification_report(y_test, predictions, target_names=class_labels))
+        if len(predictions) > 0:
+            # Check for class labels consistency
+            class_labels = [
+                "Africa", 
+                "Asia", 
+                "Middle East", 
+                "Latin America", 
+                "Europe", 
+                "USA/Canada"
+            ]
+            st.subheader('Model Evaluation')
+            st.text(classification_report(y_test, predictions, target_names=class_labels))
+        else:
+            st.error("No predictions available. Please check the model training.")
 
         # Plot feature importance
         st.subheader('Feature Importance')
@@ -128,7 +132,7 @@ if uploaded_file is not None:
                 region_data = X_train[y_train == region_index]
                 if len(region_data) > 0:
                     region_prediction = rf_model.predict(region_data)
-                    predicted_conflict_type = df['event_type'].iloc[region_prediction.argmax()]
+                    predicted_conflict_type = df['event_type'].iloc[np.argmax(np.bincount(region_prediction))]
                 else:
                     predicted_conflict_type = "General conflict"  # Fallback if no data for the region
 
