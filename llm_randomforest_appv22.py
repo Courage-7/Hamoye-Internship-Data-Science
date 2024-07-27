@@ -10,7 +10,6 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
@@ -22,32 +21,17 @@ def load_data(uploaded_file):
     df = pd.read_csv(uploaded_file)
     return df
 
-# Preprocess the data
-def preprocess_data(df):
-    region_encoder = LabelEncoder()
-    event_encoder = LabelEncoder()
-    df['region_encoded'] = region_encoder.fit_transform(df['region'])
-    df['event_encoded'] = event_encoder.fit_transform(df['event_type'])
-    df['log_fatalities'] = np.log1p(df['fatalities'])
-    df['region_event_interaction'] = df['region_encoded'] * df['event_encoded']
-    X = df[['fatalities', 'log_fatalities', 'event_encoded', 'region_event_interaction']]
-    y = df['region_encoded']
-    return df, X, y, region_encoder, event_encoder
-
 # Train Random Forest model
 def train_rf_model(X, y):
     try:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
         rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-        rf_model.fit(X_train_scaled, y_train)
-        predictions = rf_model.predict(X_test_scaled)
-        return rf_model, X_test_scaled, y_test, predictions
+        rf_model.fit(X_train, y_train)
+        predictions = rf_model.predict(X_test)
+        return rf_model, X_train, X_test, y_train, y_test, predictions
     except Exception as e:
         st.error(f"Error during model training: {e}")
-        return None, None, None, None
+        return None, None, None, None, None, None
 
 # Plot feature importance using Streamlit's native chart
 def plot_feature_importance(rf_model, X):
@@ -97,32 +81,33 @@ def generate_conflict_mitigation_strategy(api_key, conflict_type, region):
 
 # Streamlit app layout
 st.title('Conflict Data Analysis and Mitigation Strategies')
-st.write("This app analyzes conflict data using a Random Forest model and generates conflict mitigation strategies using a Generative AI model.")
+st.write("This app analyzes preprocessed conflict data using a Random Forest model and generates conflict mitigation strategies using a Generative AI model.")
 
 # API Key input
 api_key = st.text_input("Enter your API key for Generative AI:", type="password")
 
 # File upload
-uploaded_file = st.file_uploader("Upload your conflict data CSV file", type="csv")
+uploaded_file = st.file_uploader("Upload your preprocessed conflict data CSV file", type="csv")
 
 if uploaded_file is not None:
     # Load data
     df = load_data(uploaded_file)
 
-    # Preprocess data
-    processed_df, X, y, region_encoder, event_encoder = preprocess_data(df)
+    # Assume the data is already preprocessed
+    X = df.drop(['Region', 'event_type'], axis=1)  # Adjust column names as needed
+    y = df['region_encoded']  # Assume this column exists in the preprocessed data
 
     # Train Random Forest model
-    rf_model, X_test_scaled, y_test, predictions = train_rf_model(X, y)
+    rf_model, X_train, X_test, y_train, y_test, predictions = train_rf_model(X, y)
 
     if rf_model:
         # Evaluate model
-        class_labels = [
-            "Africa",
-            "Asia",
-            "Middle East",
-            "Latin America",
-            "Europe",
+    class_labels = [
+            "Africa", 
+            "Asia", 
+            "Middle East", 
+            "Latin America", 
+            "Europe", 
             "USA/Canada"
         ]
         st.subheader('Model Evaluation')
@@ -138,27 +123,35 @@ if uploaded_file is not None:
         generate_button = st.button('Generate Mitigation Strategy')
         if generate_button:
             if api_key:
-                predicted_conflict_type = event_encoder.inverse_transform([np.argmax(np.bincount(y_test[predictions == region_encoder.transform([selected_region])[0]]))])[0]
+                # Predict conflict type based on the most common event type in the selected region
+                region_index = class_labels.index(selected_region)
+                region_data = X_train[y_train == region_index]
+                if len(region_data) > 0:
+                    region_prediction = rf_model.predict(region_data)
+                    predicted_conflict_type = df['event_type'].iloc[region_prediction.argmax()]
+                else:
+                    predicted_conflict_type = "General conflict"  # Fallback if no data for the region
+
                 strategy = generate_conflict_mitigation_strategy(api_key, predicted_conflict_type, selected_region)
                 st.text_area('Generated Strategy:', value=strategy, height=300)
             else:
                 st.error("Please enter your API key.")
 
-        # Display processed data
-        st.subheader('Processed Data')
-        st.write(processed_df)
+        # Display data
+        st.subheader('Data Preview')
+        st.write(df.head())
 
-        # Download link for the processed data
+        # Download link for the data
         @st.cache_data
         def convert_df(df):
             return df.to_csv(index=False).encode('utf-8')
 
-        csv = convert_df(processed_df)
+        csv = convert_df(df)
 
         st.download_button(
-            label="Download Processed Data as CSV",
+            label="Download Data as CSV",
             data=csv,
-            file_name='processed_data.csv',
+            file_name='conflict_data.csv',
             mime='text/csv',
         )
     else:
