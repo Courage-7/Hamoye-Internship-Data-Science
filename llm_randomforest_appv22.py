@@ -23,16 +23,16 @@ def load_data(uploaded_file):
     return df
 
 # Preprocess the data
-#def preprocess_data(df):
-    #region_encoder = LabelEncoder()
-    #event_encoder = LabelEncoder()
-    #df['region_encoded'] = region_encoder.fit_transform(df['Region'])
-    #df['event_encoded'] = event_encoder.fit_transform(df['event_type'])
-    #df['log_fatalities'] = np.log1p(df['fatalities'])
-    #df['region_event_interaction'] = df['region_encoded'] * df['event_encoded']
-    #X = df[['fatalities', 'log_fatalities', 'event_encoded', 'region_event_interaction']]
-    #y = df['region_encoded']
-    #return df, X, y, region_encoder, event_encoder
+def preprocess_data(df):
+    region_encoder = LabelEncoder()
+    event_encoder = LabelEncoder()
+    df['region_encoded'] = region_encoder.fit_transform(df['Region'])
+    df['event_encoded'] = event_encoder.fit_transform(df['event_type'])
+    df['log_fatalities'] = np.log1p(df['fatalities'])
+    df['region_event_interaction'] = df['region_encoded'] * df['event_encoded']
+    X = df[['fatalities', 'log_fatalities', 'event_encoded', 'region_event_interaction']]
+    y = df['region_encoded']
+    return df, X, y, region_encoder, event_encoder
 
 # Train Random Forest model
 def train_rf_model(X, y):
